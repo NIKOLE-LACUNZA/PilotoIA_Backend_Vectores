@@ -16,10 +16,16 @@ public class DocumentController : ControllerBase
     }
 
     [HttpPost("upload")]
-public IActionResult TestUpload()
-{
-    return Ok("Recibido");
-}
+    public IActionResult TestUpload()
+    {
+        return Ok("Recibido");
+    }
+
+    [HttpGet("ping")]
+    public IActionResult Ping()
+    {
+        return Ok("DocumentController está activo");
+    }
 
     /* //[HttpPost("upload")]
     public async Task<IActionResult> Upload(IFormFile file)
