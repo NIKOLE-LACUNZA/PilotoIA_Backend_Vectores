@@ -16,13 +16,19 @@ public class DocumentController : ControllerBase
     }
 
     [HttpPost("upload")]
+public IActionResult TestUpload()
+{
+    return Ok("Recibido");
+}
+
+    /* //[HttpPost("upload")]
     public async Task<IActionResult> Upload(IFormFile file)
     {
         var blobUrl = await _blobService.UploadFileAsync(file);
         var text = await _pdfReader.ExtractTextAsync(file);
         await _chatService.ProcesarDocumento(text);
         return Ok(new { url = blobUrl });
-    }
+    } */
 
     [HttpPost("preguntar")]
     public async Task<IActionResult> Preguntar([FromBody] string pregunta)
