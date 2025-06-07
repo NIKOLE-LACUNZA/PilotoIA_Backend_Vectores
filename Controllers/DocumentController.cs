@@ -17,81 +17,81 @@ public class DocumentController : ControllerBase
         _chatService = chatService;
     }
 
-    
-[HttpPost("subir-base64")]
-public async Task<IActionResult> SubirYProcesarBase64([FromBody] ArchivoBase64Request archivo)
-{
-    if (archivo == null || string.IsNullOrWhiteSpace(archivo.Base64Contenido) || string.IsNullOrWhiteSpace(archivo.NombreArchivo))
-        return BadRequest("Falta nombre o contenido.");
 
-    
-    byte[] fileBytes;
-    try
+    [HttpPost("subir-base64")]
+    public async Task<IActionResult> SubirYProcesarBase64([FromBody] ArchivoBase64Request archivo)
     {
-        fileBytes = Convert.FromBase64String(archivo.Base64Contenido);
-    }
-    catch
-    {
-        return BadRequest("Base64 inválido.");
-    }
+        if (archivo == null || string.IsNullOrWhiteSpace(archivo.Base64Contenido) || string.IsNullOrWhiteSpace(archivo.NombreArchivo))
+            return BadRequest("Falta nombre o contenido.");
 
-    
-    var documentosPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "documentos");
-    var vectoresPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "vectores");
 
-    Directory.CreateDirectory(documentosPath);
-    Directory.CreateDirectory(vectoresPath);
-
-    var filePath = Path.Combine(documentosPath, archivo.NombreArchivo);
-    var vectorFileName = Path.GetFileNameWithoutExtension(archivo.NombreArchivo) + ".vector.json";
-    var vectorPath = Path.Combine(vectoresPath, vectorFileName);
-
-    
-    await System.IO.File.WriteAllBytesAsync(filePath, fileBytes);
-
-        
-
-    
-    _ = Task.Run(async () =>
-    {
+        byte[] fileBytes;
         try
         {
-            using var stream = new MemoryStream(fileBytes);
-            var formFile = new FormFile(stream, 0, fileBytes.Length, "file", archivo.NombreArchivo)
-            {
-                Headers = new HeaderDictionary(),
-                ContentType = "application/pdf" 
-            };
-
-            var texto = await _pdfReader.ExtractTextAsync(formFile);
-            await _chatService.ProcesarDocumento(texto, archivo.NombreArchivo);
-
-            
-            var vectorJson = _chatService.ObtenerVectorComoJson(archivo.NombreArchivo); 
-            await System.IO.File.WriteAllTextAsync(vectorPath, vectorJson);
+            fileBytes = Convert.FromBase64String(archivo.Base64Contenido);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error al procesar documento: {ex.Message}");
+            return BadRequest("Base64 inválido.");
         }
-    });
 
-    var urlDocumento = $"/documentos/{archivo.NombreArchivo}";
-    var urlVector = $"/vectores/{vectorFileName}";
+
+        var documentosPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "documentos");
+        var vectoresPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "vectores");
+
+        Directory.CreateDirectory(documentosPath);
+        Directory.CreateDirectory(vectoresPath);
+
+        var filePath = Path.Combine(documentosPath, archivo.NombreArchivo);
+        var vectorFileName = Path.GetFileNameWithoutExtension(archivo.NombreArchivo) + ".vector.json";
+        var vectorPath = Path.Combine(vectoresPath, vectorFileName);
+
+
+        await System.IO.File.WriteAllBytesAsync(filePath, fileBytes);
+
+
+
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var stream = new MemoryStream(fileBytes);
+                var formFile = new FormFile(stream, 0, fileBytes.Length, "file", archivo.NombreArchivo)
+                {
+                    Headers = new HeaderDictionary(),
+                    ContentType = "application/pdf"
+                };
+
+                var texto = await _pdfReader.ExtractTextAsync(formFile);
+                await _chatService.ProcesarDocumento(texto, archivo.NombreArchivo);
+
+
+                var vectorJson = _chatService.ObtenerVectorComoJson(archivo.NombreArchivo);
+                await System.IO.File.WriteAllTextAsync(vectorPath, vectorJson);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al procesar documento: {ex.Message}");
+            }
+        });
+
+        var urlDocumento = $"/documentos/{archivo.NombreArchivo}";
+        var urlVector = $"/vectores/{vectorFileName}";
 
         DocumentoStore.Documentos.Add(new DocumentoInfo
-    {
-        Nombre = archivo.NombreArchivo,
-        Url = urlDocumento,
-        Texto = "" 
-    });
+        {
+            Nombre = archivo.NombreArchivo,
+            Url = urlDocumento,
+            Texto = ""
+        });
 
-    return Ok(new
+        return Ok(new
         {
             documento = urlDocumento,
             vector = urlVector
         });
-}
+    }
 
     [HttpGet("list")]
     public IActionResult ListarDocumentos()
@@ -103,20 +103,25 @@ public async Task<IActionResult> SubirYProcesarBase64([FromBody] ArchivoBase64Re
         return Ok(lista);
     }
 
-    
-    [HttpPost("preguntar")]
-    public async Task<IActionResult> Preguntar([FromBody] PreguntaRequest request)
-    {
-        var documento = DocumentoStore.Documentos
-            .FirstOrDefault(d => d.Nombre == request.NombreDocumento);
+[HttpPost("preguntar-grupo")]
+public async Task<IActionResult> PreguntarGrupo([FromBody] PreguntaGrupoRequest request)
+{
+    var documentos = DocumentoStore.Documentos
+        .Where(d => request.NombresDocumentos.Contains(d.Nombre))
+        .ToList();
 
-        if (documento == null)
-            return NotFound("Documento no encontrado.");
+    if (!documentos.Any())
+        return NotFound("No se encontraron los documentos indicados.");
 
-        
-        await _chatService.ProcesarDocumento(documento.Texto, documento.Nombre);
+    // Combinar todos los textos
+    string textoCompleto = string.Join("\n\n", documentos.Select(d => d.Texto));
 
-        var respuesta = await _chatService.ConsultarPregunta(request.Pregunta, documento.Nombre);
-        return Ok(new { respuesta });
-    }
+    // Procesar como "documento combinado"
+    await _chatService.ProcesarDocumento(textoCompleto, "documento-combinado");
+
+    var respuesta = await _chatService.ConsultarPregunta(request.Pregunta, "documento-combinado");
+
+    return Ok(new { respuesta });
+}
+
 }
