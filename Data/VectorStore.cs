@@ -11,13 +11,27 @@ public class VectorStore
     }
 
     public async Task AgregarTextoAsync(string texto, string nombreDocumento)
-    {
-        var embedding = await _api.Embeddings.CreateEmbeddingAsync(texto);
-        if (!_documentosPorNombre.ContainsKey(nombreDocumento))
-            _documentosPorNombre[nombreDocumento] = new List<(string, float[])>();
+{
+    var fragmentos = FragmentarTexto(texto, 8000); 
 
-        _documentosPorNombre[nombreDocumento].Add((texto, embedding.Data[0].Embedding));
+    if (!_documentosPorNombre.ContainsKey(nombreDocumento))
+        _documentosPorNombre[nombreDocumento] = new List<(string, float[])>();
+
+    foreach (var fragmento in fragmentos)
+    {
+        var embedding = await _api.Embeddings.CreateEmbeddingAsync(fragmento);
+        _documentosPorNombre[nombreDocumento].Add((fragmento, embedding.Data[0].Embedding));
     }
+}
+
+private IEnumerable<string> FragmentarTexto(string texto, int maxLength)
+{
+    for (int i = 0; i < texto.Length; i += maxLength)
+    {
+        int length = Math.Min(maxLength, texto.Length - i);
+        yield return texto.Substring(i, length);
+    }
+}
 
     public string BuscarContexto(string pregunta, string nombreDocumento)
     {
