@@ -1,5 +1,6 @@
 using OpenAI_API;
 using OpenAI_API.Chat;
+
 public class ChatService
 {
     private readonly VectorStore _vectorStore;
@@ -11,20 +12,30 @@ public class ChatService
         _api = new OpenAIAPI(config["OpenAI:ApiKey"]);
     }
 
-    public async Task ProcesarDocumento(string texto)
+    // Procesar un documento y asociarlo con su nombre
+    public async Task ProcesarDocumento(string texto, string nombreDocumento)
     {
         var fragmentos = texto.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries);
         foreach (var f in fragmentos)
-            await _vectorStore.AgregarTextoAsync(f);
+        {
+            await _vectorStore.AgregarTextoAsync(f, nombreDocumento);
+        }
     }
 
-    public async Task<string> ConsultarPregunta(string pregunta)
+    // Consultar pregunta asociada a un documento específico
+    public async Task<string> ConsultarPregunta(string pregunta, string nombreDocumento)
     {
-        var contexto = _vectorStore.BuscarContexto(pregunta);
+        var contexto = _vectorStore.BuscarContexto(pregunta, nombreDocumento);
+
         var chat = _api.Chat.CreateConversation();
         chat.AppendSystemMessage("Responde usando solo este contexto:");
         chat.AppendUserInput(contexto);
         chat.AppendUserInput(pregunta);
+
         return await chat.GetResponseFromChatbotAsync();
     }
+public string ObtenerVectorComoJson(string nombreDocumento)
+{
+    return _vectorStore.ObtenerVectorComoJson(nombreDocumento);
+}
 }
