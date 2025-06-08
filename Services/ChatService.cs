@@ -12,7 +12,6 @@ public class ChatService
         _api = new OpenAIAPI(config["OpenAI:ApiKey"]);
     }
 
-    // Procesar un documento y asociarlo con su nombre
     public async Task ProcesarDocumento(string texto, string nombreDocumento)
     {
         var fragmentos = texto.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -21,8 +20,6 @@ public class ChatService
             await _vectorStore.AgregarTextoAsync(f, nombreDocumento);
         }
     }
-
-    // Consultar pregunta asociada a un documento específico
     public async Task<string> ConsultarPregunta(string pregunta, string nombreDocumento)
     {
         var contexto = _vectorStore.BuscarContexto(pregunta, nombreDocumento);
