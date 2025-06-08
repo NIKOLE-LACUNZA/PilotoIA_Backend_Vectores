@@ -11,27 +11,27 @@ public class VectorStore
     }
 
     public async Task AgregarTextoAsync(string texto, string nombreDocumento)
-{
-    var fragmentos = FragmentarTexto(texto, 8000); 
-
-    if (!_documentosPorNombre.ContainsKey(nombreDocumento))
-        _documentosPorNombre[nombreDocumento] = new List<(string, float[])>();
-
-    foreach (var fragmento in fragmentos)
     {
-        var embedding = await _api.Embeddings.CreateEmbeddingAsync(fragmento);
-        _documentosPorNombre[nombreDocumento].Add((fragmento, embedding.Data[0].Embedding));
-    }
-}
+        var fragmentos = FragmentarTexto(texto, 8000);
 
-private IEnumerable<string> FragmentarTexto(string texto, int maxLength)
-{
-    for (int i = 0; i < texto.Length; i += maxLength)
-    {
-        int length = Math.Min(maxLength, texto.Length - i);
-        yield return texto.Substring(i, length);
+        if (!_documentosPorNombre.ContainsKey(nombreDocumento))
+            _documentosPorNombre[nombreDocumento] = new List<(string, float[])>();
+
+        foreach (var fragmento in fragmentos)
+        {
+            var embedding = await _api.Embeddings.CreateEmbeddingAsync(fragmento);
+            _documentosPorNombre[nombreDocumento].Add((fragmento, embedding.Data[0].Embedding));
+        }
     }
-}
+
+    private IEnumerable<string> FragmentarTexto(string texto, int maxLength)
+    {
+        for (int i = 0; i < texto.Length; i += maxLength)
+        {
+            int length = Math.Min(maxLength, texto.Length - i);
+            yield return texto.Substring(i, length);
+        }
+    }
 
     public string BuscarContexto(string pregunta, string nombreDocumento)
     {
@@ -59,17 +59,24 @@ private IEnumerable<string> FragmentarTexto(string texto, int maxLength)
     }
     public string ObtenerVectorComoJson(string nombreDocumento)
     {
-    if (!_documentosPorNombre.ContainsKey(nombreDocumento))
-        return "{}"; // o null o string vacío
+        if (!_documentosPorNombre.ContainsKey(nombreDocumento))
+            return "{}"; // o null o string vacío
 
-    var datos = _documentosPorNombre[nombreDocumento]
-        .Select(item => new
-        {
-            Texto = item.texto,
-            Embedding = item.embedding
-        });
+        var datos = _documentosPorNombre[nombreDocumento]
+            .Select(item => new
+            {
+                Texto = item.texto,
+                Embedding = item.embedding
+            });
 
-    return JsonSerializer.Serialize(datos);
+        return JsonSerializer.Serialize(datos);
     }
+    public void AgregarEmbeddingDesdeCarga(string nombreDocumento, string texto, float[] embedding)
+{
+    if (!_documentosPorNombre.ContainsKey(nombreDocumento))
+        _documentosPorNombre[nombreDocumento] = new List<(string, float[])>();
+
+    _documentosPorNombre[nombreDocumento].Add((texto, embedding));
+}
 }
 
