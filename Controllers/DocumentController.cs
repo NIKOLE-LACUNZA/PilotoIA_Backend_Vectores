@@ -60,11 +60,10 @@ public class DocumentController : ControllerBase
 
         
         await _chatService.ProcesarDocumento(texto, archivo.NombreArchivo);
-
-        
-    var vectorJson = _chatService.ObtenerVectorComoJson(archivo.NombreArchivo);
-    var nombreVector = Path.GetFileNameWithoutExtension(archivo.NombreArchivo) + ".vector.json";
-    await _blobService.UploadTextAsync(nombreVector, vectorJson);
+        var vectorJson = _chatService.ObtenerVectorComoJson(archivo.NombreArchivo);
+        var nombreVector = Path.GetFileNameWithoutExtension(archivo.NombreArchivo) + ".vector.json";
+        var vectorUrl = await _blobService.UploadTextAsync(nombreVector, vectorJson);
+        await _blobService.UploadTextAsync(nombreVector, vectorJson);
 
         
         
@@ -78,7 +77,7 @@ public class DocumentController : ControllerBase
         return Ok(new
         {
             documento = urlBlob,
-            vector = vectorJson 
+            vector = vectorUrl 
         });
     }
 
